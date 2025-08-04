@@ -1,0 +1,4 @@
+[Garmin]
+email = your_email@example.com
+password = your_password
+fit_file_folder = /path/to/fit/files/folder

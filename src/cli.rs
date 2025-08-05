@@ -27,6 +27,7 @@ impl Cli {
         let config = Config::load()?;
 
         let db = Database::new(&config)?;
+        db.init_database()?;
 
         match self.commands {
             Commands::Info(cmd) => cmd.run(&config, &db),

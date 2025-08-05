@@ -1,3 +1,6 @@
+use std::vec;
+
+use crate::models;
 use anyhow::Context;
 use rusqlite::{Connection, params};
 
@@ -13,26 +16,41 @@ impl Database {
         let connection =
             Connection::open(&db_path).context("Failed to open/create database connetion")?;
 
-        Self::init_database(&connection)?;
-
         Ok(Self { conn: connection })
     }
 
-    fn init_database(conn: &Connection) -> anyhow::Result<()> {
-        conn.execute(
-            " CREATE TABLE IF NOT EXISTS metadata (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-        )",
-            params![],
-        )
-        .context("Failed to create metadata table")?;
+    pub fn init_database(&self) -> anyhow::Result<()> {
+        self.init_files_table()?;
+        self.init_activities_table()?;
 
-        conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-            params!["version", "v0.1.0"],
-        )
-        .context("Failed to set database version")?;
+        Ok(())
+    }
+
+    fn init_files_table(&self) -> anyhow::Result<()> {
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS files (
+                filename TEXT PRIMARY KEY
+                )",
+                params![],
+            )
+            .context("Failed to create metadata table")?;
+
+        Ok(())
+    }
+
+    fn init_activities_table(&self) -> anyhow::Result<()> {
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS activities (
+                id INTEGER PRIMARY KEY,
+                sport_type TEXT NOT NULL,
+                duration REAL
+                )
+                ",
+                params![],
+            )
+            .context("Failed to create activites table")?;
 
         Ok(())
     }

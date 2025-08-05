@@ -2,12 +2,12 @@ use crate::config::Config;
 use clap::Args;
 
 #[derive(Debug, Args)]
-pub struct InfoCommand {
+pub struct InfoArgs {
 
 }
 
-impl InfoCommand {
-    pub fn run(&self, config: &Config, db: &Database) -> anyhow::Result<()>  {
+impl InfoArgs {
+    pub fn run(&self, config: &Config) -> anyhow::Result<()>  {
         Ok(())
     }
 }

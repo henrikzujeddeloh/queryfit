@@ -1,9 +1,9 @@
-use clap::{Parser, Subcommand};
 use crate::commands;
 use crate::config::Config;
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name="queryfit")]
+#[command(name = "queryfit")]
 pub struct Cli {
     #[command(subcommand)]
     pub commands: Commands,
@@ -12,15 +12,14 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     #[command(name = "info")]
-    Info(commands::InfoCommand),
+    Info(commands::InfoArgs),
 }
 
 impl Cli {
     pub fn run(self) -> anyhow::Result<()> {
+        let config = Config::load()?;
 
-    let config = Config::load()?;
-
-    match self.command {
+        match self.commands {
             Commands::Info(cmd) => cmd.run(&config),
         }
     }

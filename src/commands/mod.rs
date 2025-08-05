@@ -1,3 +1,3 @@
 pub mod info;
 
-pub use info::InfoCommand;
+pub use info::InfoArgs;

@@ -39,8 +39,10 @@ impl Config {
         Self::ensure_config_dir()?;
 
         let config_path = Self::get_config_file_path();
+
         if !config_path.exists() {
-            return Self::create_default_config();
+            Self::create_default_config();
+            std::process::exit(0);
         }
 
         let file_contents =
@@ -51,6 +53,7 @@ impl Config {
 
         Ok(config)
     }
+
 
     fn create_default_config() -> anyhow::Result<Self> {
         let config_path = Self::get_config_file_path();

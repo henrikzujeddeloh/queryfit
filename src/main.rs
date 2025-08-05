@@ -1,9 +1,10 @@
 mod cli;
-mod config;
 mod commands;
+mod config;
+mod db;
 
-use cli::Cli;
 use clap::Parser;
+use cli::Cli;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();

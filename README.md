@@ -47,7 +47,8 @@ Import .fit files into database.
 
 #### Info
 Get information about .fit files and database.
-`queryfit info`
+
+- `queryfit info`
 
 #### Summary
 Output a summary of metrics over a specified time frame.
@@ -68,7 +69,7 @@ Output a summary of metrics over a specified time frame.
     - Summarize statistics over specified year
     - Defaults to this year
 
-Options:
+##### Options
 - `--activity <TYPE>` 
     - Filter summary by activity type (`running`, `cycling`, etc.)
     - Defaults to all activity types

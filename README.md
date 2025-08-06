@@ -36,9 +36,6 @@ Each command has it's own set of optional subcommands and/or arguments.
 #### Database
 Import .fit files into database.
 
-- `queryfit database create` 
-    - Create database and import all .fit files
-    - Use when running `queryfit` for the first time
 - `queryfit database import` 
     - Import new .fit files into database
 - `queryfit database recreate` 
@@ -46,7 +43,7 @@ Import .fit files into database.
     - Use after schema update
 
 #### Info
-Get information about .fit files and database.
+Get information about app and data (.fit files and database).
 
 - `queryfit info`
 

@@ -34,9 +34,10 @@ impl Cli {
                 db.set_db_invalid();
                 // if database version is not correct, only allow database commands
                 match &self.commands {
+                    Commands::Info(cmd) => cmd.run(&config, &db)?,
                     Commands::Database(cmd) => cmd.run(&config, &db)?,
                     _ => println!(
-                        "The database version does not match the app version. \n Please run 'queryfit database recreate'. \n No data will be lost."
+                        "The database version does not match the app version.\n Please run'queryfit database recreate'.\nNo data will be lost."
                     ),
                 }
                 process::exit(0);

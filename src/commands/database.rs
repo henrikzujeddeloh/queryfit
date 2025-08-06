@@ -78,8 +78,6 @@ impl DatabaseArgs {
     }
 
     fn add_activity(path: &Path, db: &Database) -> anyhow::Result<()> {
-        let mut activity = Activity::new();
-
         let mut file = std::fs::File::open(path)?;
 
         let opts: HashSet<DecodeOption> = HashSet::from([
@@ -90,23 +88,21 @@ impl DatabaseArgs {
         ]);
         let records = from_reader_with_options(&mut file, &opts)?;
 
+        let mut sessions: Vec<Activity> = Vec::new();
+        let mut curr_session = Activity::new();
+
         for record in records {
             match record.kind() {
-                MesgNum::Sport => {
-                    for field in record.fields() {
-                        match field.name() {
-                            "sport" => activity.sport_type = field.value().to_string(),
-                            _ => {}
-                        }
+                MesgNum::Session => {
+                    if !curr_session.is_empty() {
+                        sessions.push(curr_session);
+                        curr_session = Activity::new();
                     }
-                }
-                MesgNum::Activity => {
                     for field in record.fields() {
                         match field.name() {
-                            // TODO: figure out how to do this without cloning (.try_into() not
-                            // implemented for f64 and borrowed fields?)
+                            "sport" => curr_session.sport = field.value().to_string(),
                             "total_timer_time" => {
-                                activity.duration = field.clone().into_value().try_into()?
+                                curr_session.duration = field.clone().into_value().try_into()?
                             }
                             _ => {}
                         }
@@ -115,10 +111,15 @@ impl DatabaseArgs {
                 _ => {}
             }
         }
-        db.connection().execute(
-            "INSERT INTO activities (sport_type, duration) VALUES (?1, ?2)",
-            params![activity.sport_type, activity.duration],
-        )?;
+        if !curr_session.is_empty() {
+            sessions.push(curr_session);
+        }
+        for session in sessions {
+            db.connection().execute(
+                "INSERT INTO activities (sport_type, duration) VALUES (?1, ?2)",
+                params![session.sport, session.duration],
+            )?;
+        }
         Ok(())
     }
 

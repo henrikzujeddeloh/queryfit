@@ -7,8 +7,7 @@ pub struct File {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Activity {
-    pub id: i64,
-    pub sport_type: String,
+    pub sport: String,
     // in seconds
     pub duration: f64,
 }
@@ -16,9 +15,12 @@ pub struct Activity {
 impl Activity {
     pub fn new() -> Self {
         Self {
-            id: 0,
-            sport_type: "Unknown".to_owned(),
+            sport: "Unknown".to_owned(),
             duration: 0.0,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sport == "Unknown"
     }
 }

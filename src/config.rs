@@ -54,7 +54,6 @@ impl Config {
         Ok(config)
     }
 
-
     fn create_default_config() -> anyhow::Result<Self> {
         let config_path = Self::get_config_file_path();
 

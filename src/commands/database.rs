@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::db::Database;
 use crate::models::Activity;
-use crate::models::File;
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use fitparser::{
@@ -11,6 +10,7 @@ use fitparser::{
 use rusqlite::params;
 use std::collections::HashSet;
 use std::path::Path;
+use std::process;
 
 #[derive(Debug, Args)]
 pub struct DatabaseArgs {
@@ -41,6 +41,14 @@ impl DatabaseArgs {
     }
 
     fn run_import(config: &Config, db: &Database) -> anyhow::Result<()> {
+        // do not allow import if database is invalid
+        if !db.get_db_validitiy() {
+            println!(
+                "The database version does not match the app version. \n Please run 'queryfit database recreate'. \n No data will be lost."
+            );
+            process::exit(0);
+        }
+
         let data_path = config.get_data_path();
 
         for item in walkdir::WalkDir::new(data_path)
@@ -56,14 +64,16 @@ impl DatabaseArgs {
             }
 
             Self::add_activity(fit_file_path, db)?;
-
             Self::add_filename(fit_file_path, db)?
         }
         Ok(())
     }
 
-    fn run_recreate(&self, config: &Config, db: &Database) -> anyhow::Result<()> {
-        println!("recreate");
+    pub fn run_recreate(&self, config: &Config, db: &Database) -> anyhow::Result<()> {
+        db.reset()?;
+        db.init_database()?;
+        db.set_db_valid();
+        Self::run_import(config, db)?;
         Ok(())
     }
 
@@ -105,7 +115,10 @@ impl DatabaseArgs {
                 _ => {}
             }
         }
-        db.connection().execute("INSERT INTO activities (sport_type, duration) VALUES (?1, ?2)", params![activity.sport_type, activity.duration])?;
+        db.connection().execute(
+            "INSERT INTO activities (sport_type, duration) VALUES (?1, ?2)",
+            params![activity.sport_type, activity.duration],
+        )?;
         Ok(())
     }
 

@@ -2,6 +2,7 @@ use crate::commands;
 use crate::config::Config;
 use crate::db::Database;
 use clap::{Parser, Subcommand};
+use std::process;
 
 #[derive(Debug, Parser)]
 #[command(name = "queryfit", version)]
@@ -27,7 +28,22 @@ impl Cli {
         let config = Config::load()?;
 
         let db = Database::new(&config)?;
-        db.init_database()?;
+
+        if db.initialized()? {
+            if !db.correct_version()? {
+                db.set_db_invalid();
+                // if database version is not correct, only allow database commands
+                match &self.commands {
+                    Commands::Database(cmd) => cmd.run(&config, &db)?,
+                    _ => println!(
+                        "The database version does not match the app version. \n Please run 'queryfit database recreate'. \n No data will be lost."
+                    ),
+                }
+                process::exit(0);
+            }
+        } else {
+            db.init_database()?;
+        }
 
         match self.commands {
             Commands::Info(cmd) => cmd.run(&config, &db),

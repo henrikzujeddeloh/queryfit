@@ -1,6 +1,11 @@
 # Changelog
 
 ## [unreleased]
+### Features
+ - Activity start time, distance and calories is now imported from .fit files into database
+
+### Fixed
+ - Save individual sessions of multi-sport activities as individual activities in database
 
 ## v0.1.0 - 2025-08-06
 ### Features

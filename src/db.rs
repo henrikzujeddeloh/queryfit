@@ -105,8 +105,11 @@ impl Database {
             .execute(
                 "CREATE TABLE IF NOT EXISTS activities (
                 id INTEGER PRIMARY KEY,
+                timestamp DATETIME NOT NULL,
                 sport_type TEXT NOT NULL,
-                duration REAL
+                duration REAL,
+                distance REAL,
+                calories REAL
                 )
                 ",
                 params![],

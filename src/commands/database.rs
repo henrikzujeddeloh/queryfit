@@ -1,12 +1,11 @@
 use crate::config::Config;
 use crate::db::Database;
-use crate::models::Activity;
+use crate::models::{Activity, File};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
-use fitparser::{
-    de::{DecodeOption, from_reader_with_options},
-    profile::MesgNum,
-};
+use fitparser::Value;
+use fitparser::de::{DecodeOption, from_reader_with_options};
+use fitparser::profile::MesgNum;
 use rusqlite::params;
 use std::collections::HashSet;
 use std::path::Path;
@@ -21,9 +20,11 @@ pub struct DatabaseArgs {
 #[derive(Debug, Subcommand)]
 pub enum Actions {
     #[command(name = "import")]
+    #[command(about = "import new .fit files into database")]
     Import,
 
     #[command(name = "recreate")]
+    #[command(about = "recreate database from all .fit files")]
     Recreate,
 }
 
@@ -44,7 +45,7 @@ impl DatabaseArgs {
         // do not allow import if database is invalid
         if !db.get_db_validitiy() {
             println!(
-                "The database version does not match the app version. \n Please run 'queryfit database recreate'. \n No data will be lost."
+                "The database version does not match the app version.\nPlease run 'queryfit database recreate'.\nNo data will be lost."
             );
             process::exit(0);
         }
@@ -57,14 +58,15 @@ impl DatabaseArgs {
             .filter(|e| e.path().extension().map_or(false, |ext| ext == "fit"))
         {
             let fit_file_path = item.path();
+            let file = File::new(Self::get_filename(&fit_file_path)?);
 
             // move to next file if it exists in database
-            if Self::check_file_imported(fit_file_path, db)? {
+            if Self::check_file_imported(&file, db)? {
                 continue;
             }
 
-            Self::add_activity(fit_file_path, db)?;
-            Self::add_filename(fit_file_path, db)?
+            Self::add_activity(&fit_file_path, db)?;
+            Self::add_filename(&file, db)?;
         }
         Ok(())
     }
@@ -104,6 +106,23 @@ impl DatabaseArgs {
                             "total_timer_time" => {
                                 curr_session.duration = field.clone().into_value().try_into()?
                             }
+                            "total_distance" => {
+                                let distance: f64 = field.clone().into_value().try_into()?;
+                                curr_session.distance =
+                                    // store 0 distance as None/NULL
+                                    if distance > 0.0 { Some(distance) } else { None };
+                                // curr_session.distance = Some(field.clone().into_value().try_into()?)
+                            }
+                            "start_time" => match field.clone().into_value() {
+                                Value::Timestamp(local_dt) => {
+                                    // timestamps in .fit file are in local time
+                                    curr_session.timestamp = local_dt
+                                }
+                                _ => eprintln!("Unexpected timestamp type"),
+                            },
+                            "total_calories" => {
+                                curr_session.calories = field.clone().into_value().try_into()?
+                            }
                             _ => {}
                         }
                     }
@@ -116,36 +135,35 @@ impl DatabaseArgs {
         }
         for session in sessions {
             db.connection().execute(
-                "INSERT INTO activities (sport_type, duration) VALUES (?1, ?2)",
-                params![session.sport, session.duration],
+                "INSERT INTO activities (sport_type, timestamp, duration, distance, calories) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories],
             )?;
         }
         Ok(())
     }
 
-    fn check_file_imported(path: &Path, db: &Database) -> anyhow::Result<bool> {
+    fn get_filename(path: &Path) -> anyhow::Result<String> {
         let filename = match path.file_name().and_then(|name| name.to_str()) {
             Some(name) => Ok(name),
             None => Err(anyhow!(format!("Failed to find filename of {:?}", path))),
         }?;
+        Ok(filename.to_owned())
+    }
 
+    fn check_file_imported(file: &File, db: &Database) -> anyhow::Result<bool> {
         let exists: bool = db.connection().query_row(
             "SELECT EXISTS(SELECT 1 FROM files WHERE filename = ?1)",
-            params![filename],
+            params![file.filename],
             |row| row.get(0),
         )?;
 
         Ok(exists)
     }
 
-    fn add_filename(path: &Path, db: &Database) -> anyhow::Result<()> {
-        let filename = match path.file_name().and_then(|name| name.to_str()) {
-            Some(name) => Ok(name),
-            None => Err(anyhow!(format!("Failed to find filename of {:?}", path))),
-        }?;
+    fn add_filename(file: &File, db: &Database) -> anyhow::Result<()> {
         db.connection().execute(
             "INSERT INTO files (filename) VALUES (?1)",
-            params![filename],
+            params![file.filename],
         )?;
 
         Ok(())

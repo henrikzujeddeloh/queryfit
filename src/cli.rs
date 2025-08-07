@@ -21,6 +21,10 @@ pub enum Commands {
     #[command(name = "database")]
     #[command(about = "importing into or recreating the database")]
     Database(commands::DatabaseArgs),
+
+    #[command(name = "summary")]
+    #[command(about = "display summary over specified time period")]
+    Summary(commands::SummaryArgs),
 }
 
 impl Cli {
@@ -49,6 +53,7 @@ impl Cli {
         match self.commands {
             Commands::Info(cmd) => cmd.run(&config, &db),
             Commands::Database(cmd) => cmd.run(&config, &db),
+            Commands::Summary(cmd) => cmd.run(&config, &db),
         }
     }
 }

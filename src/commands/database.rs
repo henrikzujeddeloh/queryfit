@@ -135,7 +135,7 @@ impl DatabaseArgs {
         }
         for session in sessions {
             db.connection().execute(
-                "INSERT INTO activities (sport_type, timestamp, duration, distance, calories) VALUES (?1, ?2, ?3, ?4, ?5)",
+                "INSERT INTO activities (sport, timestamp, duration, distance, calories) VALUES (?1, ?2, ?3, ?4, ?5)",
                 params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories],
             )?;
         }

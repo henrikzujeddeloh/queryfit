@@ -3,6 +3,7 @@
 ## [unreleased]
 ### Features
  - Activity start time, distance and calories is now imported from .fit files into database
+ - Summarize total distance of last 7 days with optional activity filter (ex. `queryfit summary 7d --activity running`)
 
 ### Fixed
  - Save individual sessions of multi-sport activities as individual activities in database

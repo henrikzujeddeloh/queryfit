@@ -30,7 +30,6 @@ impl Database {
             .collect::<Result<Vec<String>, rusqlite::Error>>()?;
 
         for table in tables {
-            println!("droppping {}", table);
             self.conn
                 .execute(&format!("DROP TABLE IF EXISTS {}", table), [])?;
         }
@@ -106,7 +105,7 @@ impl Database {
                 "CREATE TABLE IF NOT EXISTS activities (
                 id INTEGER PRIMARY KEY,
                 timestamp DATETIME NOT NULL,
-                sport_type TEXT NOT NULL,
+                sport TEXT NOT NULL,
                 duration REAL,
                 distance REAL,
                 calories REAL

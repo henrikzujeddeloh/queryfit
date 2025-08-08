@@ -1,6 +1,8 @@
 # Changelog
 
 ## [unreleased]
+
+## v0.2.0 - 2025-08-08
 ### Features
  - Activity start time, distance and calories is now imported from .fit files into database
  - Summarize total distance of last 7, 30 and 365 days with optional activity filter (ex. `queryfit summary 7d --activity running`)

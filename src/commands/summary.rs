@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::db::Database;
+use chrono::DateTime;
 use clap::{Args, Subcommand};
 use rusqlite::params;
 
@@ -13,6 +14,9 @@ pub struct SummaryArgs {
 pub struct SummarySubcommandArgs {
     #[arg(long)]
     pub activity: Option<Vec<String>>,
+
+    #[arg(short, long)]
+    pub list: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -72,6 +76,21 @@ impl SummaryArgs {
             Self::avg_calories_last_n_days(db, 7, args)?
         );
 
+        println!("\n\nActivity breakdown:\n");
+
+        for (sport, count) in Self::count_sports_last_n_days(db, 7, args)? {
+            println!("{}: {} times", sport, count);
+
+        }
+
+        if args.list == true {
+            println!("\n\nActivies of the last 7 days\n");
+            let activity_list = Self::activites_last_n_days(db, 7, args)?;
+            for activity in activity_list {
+                println!("{}", activity);
+            }
+        }
+
         Ok(())
     }
 
@@ -101,6 +120,21 @@ impl SummaryArgs {
             Self::avg_calories_last_n_days(db, 30, args)?
         );
 
+        println!("\n\nActivity breakdown:\n");
+
+        for (sport, count) in Self::count_sports_last_n_days(db, 30, args)? {
+            println!("{}: {} times", sport, count);
+
+        }
+
+        if args.list == true {
+            println!("\n\nActivies of the last 30 days\n");
+            let activity_list = Self::activites_last_n_days(db, 30, args)?;
+            for activity in activity_list {
+                println!("{}", activity);
+            }
+        }
+
         Ok(())
     }
 
@@ -129,6 +163,21 @@ impl SummaryArgs {
             "Average Calories: {:.2} kal",
             Self::avg_calories_last_n_days(db, 365, args)?
         );
+
+        println!("\n\nActivity breakdown:\n");
+
+        for (sport, count) in Self::count_sports_last_n_days(db, 365, args)? {
+            println!("{}: {} times", sport, count);
+
+        }
+
+        if args.list == true {
+            println!("\n\nActivies of the last 365 days\n");
+            let activity_list = Self::activites_last_n_days(db, 365, args)?;
+            for activity in activity_list {
+                println!("{}", activity);
+            }
+        }
 
         Ok(())
     }
@@ -222,12 +271,65 @@ impl SummaryArgs {
         // Ok(sum_distance)
     }
 
+    fn activites_last_n_days(
+        db: &Database,
+        days: u16,
+        args: &SummarySubcommandArgs,
+    ) -> anyhow::Result<Vec<String>> {
+        let query = "SELECT timestamp, sport, duration FROM activities WHERE timestamp >= datetime('now', ?) ORDER BY timestamp DESC";
+
+        let mut stmt = db.connection().prepare(query)?;
+
+        let activities_iter = stmt.query_map(params![format!("-{} days", days)], |row| {
+            let timestamp: String = row.get(0)?;
+            let sport: String = row.get(1)?;
+            let duration: f64 = row.get(2)?;
+
+            // TODO: fix this error handling
+            let parsed_date =
+                DateTime::parse_from_rfc3339(&timestamp).expect("Failed to parse datetime");
+
+            Ok(format!(
+                "{} - {} {}",
+                parsed_date.format("%Y-%m-%d"),
+                Self::format_duration(duration),
+                sport
+            ))
+        })?;
+
+        let activities: Vec<String> = activities_iter.collect::<Result<Vec<String>, _>>()?;
+
+        Ok(activities)
+    }
+
+    fn count_sports_last_n_days(
+        db: &Database,
+        days: u16,
+        args: &SummarySubcommandArgs,
+    ) -> anyhow::Result<Vec<(String, i64)>> {
+        let query = "SELECT sport, COUNT(*) as sport_count FROM activities WHERE timestamp >= datetime('now', ?) GROUP BY sport ORDER BY sport_count DESC";
+
+        let mut stmt = db.connection().prepare(query)?;
+
+        let sports_count = stmt
+            .query_map(params![format!("-{} days", days)], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .collect::<rusqlite::Result<Vec<(String, i64)>>>()?;
+
+        Ok(sports_count)
+    }
+
     fn format_duration(seconds: f64) -> String {
         let hours = (seconds / 3600.0).floor() as u64;
         let remaining_seconds = seconds % 3600.0;
         let mins = (remaining_seconds / 60.0).floor() as u64;
         let secs = (remaining_seconds % 60.0).floor() as u64;
 
-        format!("{:02} hours {:02} minutes {:02} seconds", hours, mins, secs)
+        // if hours == 0 {
+        //     format!("{:02} m {:02} s", mins, secs)
+        // } else {
+        format!("{:02} h {:02} m {:02} s", hours, mins, secs)
+        // }
     }
 }

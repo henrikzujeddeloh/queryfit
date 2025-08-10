@@ -6,6 +6,7 @@ use clap::{Args, Subcommand};
 use fitparser::Value;
 use fitparser::de::{DecodeOption, from_reader_with_options};
 use fitparser::profile::MesgNum;
+use indicatif::ProgressBar;
 use rusqlite::params;
 use std::collections::HashSet;
 use std::path::Path;
@@ -52,22 +53,34 @@ impl DatabaseArgs {
 
         let data_path = config.get_data_path();
 
-        for item in walkdir::WalkDir::new(data_path)
+        let files: Vec<_> = walkdir::WalkDir::new(data_path)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.path().extension().map_or(false, |ext| ext == "fit"))
-        {
+            .collect();
+
+        let pb = ProgressBar::new(files.len() as u64);
+
+        println!("Adding .fit file data to database...");
+        // TODO: process multiple files in parallel?
+        for item in files {
             let fit_file_path = item.path();
             let file = File::new(Self::get_filename(&fit_file_path)?);
 
             // move to next file if it exists in database
             if Self::check_file_imported(&file, db)? {
+                pb.inc(1);
                 continue;
             }
 
             Self::add_activity(&fit_file_path, db)?;
             Self::add_filename(&file, db)?;
+
+            pb.inc(1);
         }
+        pb.finish_and_clear();
+        println!("done.");
+
         Ok(())
     }
 

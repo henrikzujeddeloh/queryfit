@@ -3,6 +3,9 @@
 ## [unreleased]
 ### Features
  - Summary command lists total duration and average calories per workout
+ - List number of sport type in time range in summary
+ - Optionally list activities in summary with `-l`
+ - Show progress bar for importing .fit files to database
 
 ## v0.2.0 - 2025-08-08
 ### Features

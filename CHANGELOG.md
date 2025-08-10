@@ -1,6 +1,8 @@
 # Changelog
 
 ## [unreleased]
+### Features
+ - Summary command lists total duration and average calories per workout
 
 ## v0.2.0 - 2025-08-08
 ### Features

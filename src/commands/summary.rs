@@ -60,8 +60,16 @@ impl SummaryArgs {
         }
 
         println!(
+            "Total Duration: {}",
+            Self::format_duration(Self::sum_duration_last_n_days(db, 7, args)?)
+        );
+        println!(
             "Total Distance: {:.2} km",
             Self::sum_distance_last_n_days(db, 7, args)? / 1000.0
+        );
+        println!(
+            "Average Calories: {:.2} kcal",
+            Self::avg_calories_last_n_days(db, 7, args)?
         );
 
         Ok(())
@@ -81,8 +89,16 @@ impl SummaryArgs {
         }
 
         println!(
+            "Total Duration: {}",
+            Self::format_duration(Self::sum_duration_last_n_days(db, 30, args)?)
+        );
+        println!(
             "Total Distance: {:.2} km",
             Self::sum_distance_last_n_days(db, 30, args)? / 1000.0
+        );
+        println!(
+            "Average Calories: {:.2} kcal",
+            Self::avg_calories_last_n_days(db, 30, args)?
         );
 
         Ok(())
@@ -102,8 +118,16 @@ impl SummaryArgs {
         }
 
         println!(
+            "Total Duration: {}",
+            Self::format_duration(Self::sum_duration_last_n_days(db, 365, args)?)
+        );
+        println!(
             "Total Distance: {:.2} km",
             Self::sum_distance_last_n_days(db, 365, args)? / 1000.0
+        );
+        println!(
+            "Average Calories: {:.2} kal",
+            Self::avg_calories_last_n_days(db, 365, args)?
         );
 
         Ok(())
@@ -128,13 +152,82 @@ impl SummaryArgs {
             base_query.to_string()
         };
 
-        let sum_distance: Option<f64> = db
-            .connection()
-            .query_row(&query, params![format!("-{} days", days)], |row| row.get(0))?;
+        let sum_distance: Option<f64> =
+            db.connection()
+                .query_row(&query, params![format!("-{} days", days)], |row| row.get(0))?;
 
         Ok(sum_distance.unwrap_or(0.0))
 
         // let sum_distance: f64 = db.connection().query_row("SELECT SUM(distance) FROM activities WHERE distance IS NOT NULL AND timestamp >= datetime('now', ?)", params![format!("-{} days", days)], |row| row.get(0))?;
         // Ok(sum_distance)
+    }
+
+    fn sum_duration_last_n_days(
+        db: &Database,
+        days: u16,
+        args: &SummarySubcommandArgs,
+    ) -> anyhow::Result<f64> {
+        let base_query =
+            "SELECT SUM(duration) FROM activities WHERE timestamp >= datetime('now', ?)";
+
+        let query = if let Some(activity_list) = &args.activity {
+            let activities_condition = activity_list
+                .iter()
+                .map(|a| format!("'{}'", a))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            format!("{} AND sport IN ({})", base_query, activities_condition)
+        } else {
+            base_query.to_string()
+        };
+
+        let sum_duration: Option<f64> =
+            db.connection()
+                .query_row(&query, params![format!("-{} days", days)], |row| row.get(0))?;
+
+        Ok(sum_duration.unwrap_or(0.0))
+
+        // let sum_distance: f64 = db.connection().query_row("SELECT SUM(distance) FROM activities WHERE distance IS NOT NULL AND timestamp >= datetime('now', ?)", params![format!("-{} days", days)], |row| row.get(0))?;
+        // Ok(sum_distance)
+    }
+
+    fn avg_calories_last_n_days(
+        db: &Database,
+        days: u16,
+        args: &SummarySubcommandArgs,
+    ) -> anyhow::Result<f64> {
+        let base_query =
+            "SELECT AVG(calories) FROM activities WHERE timestamp >= datetime('now', ?)";
+
+        let query = if let Some(activity_list) = &args.activity {
+            let activities_condition = activity_list
+                .iter()
+                .map(|a| format!("'{}'", a))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            format!("{} AND sport IN ({})", base_query, activities_condition)
+        } else {
+            base_query.to_string()
+        };
+
+        let avg_calories: Option<f64> =
+            db.connection()
+                .query_row(&query, params![format!("-{} days", days)], |row| row.get(0))?;
+
+        Ok(avg_calories.unwrap_or(0.0))
+
+        // let sum_distance: f64 = db.connection().query_row("SELECT SUM(distance) FROM activities WHERE distance IS NOT NULL AND timestamp >= datetime('now', ?)", params![format!("-{} days", days)], |row| row.get(0))?;
+        // Ok(sum_distance)
+    }
+
+    fn format_duration(seconds: f64) -> String {
+        let hours = (seconds / 3600.0).floor() as u64;
+        let remaining_seconds = seconds % 3600.0;
+        let mins = (remaining_seconds / 60.0).floor() as u64;
+        let secs = (remaining_seconds % 60.0).floor() as u64;
+
+        format!("{:02} hours {:02} minutes {:02} seconds", hours, mins, secs)
     }
 }

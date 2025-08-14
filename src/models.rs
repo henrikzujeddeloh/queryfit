@@ -45,3 +45,28 @@ impl Activity {
         self.sport == "Unknown"
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Device {
+    pub product: String,
+
+    pub timestamp: DateTime<Local>,
+
+    // in V
+    pub battery: Option<f64>,
+
+}
+
+impl Device {
+    pub fn new() -> Self {
+        Self {
+            product: "Unknown".to_owned(),
+            timestamp: Local::now(),
+            battery: None,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.product == "Unknown"
+    }
+}

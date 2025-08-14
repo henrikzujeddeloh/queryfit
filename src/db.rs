@@ -64,6 +64,7 @@ impl Database {
         self.init_metadata_table()?;
         self.init_files_table()?;
         self.init_activities_table()?;
+        self.init_devices_table()?;
 
         Ok(())
     }
@@ -114,6 +115,23 @@ impl Database {
                 params![],
             )
             .context("Failed to create activites table")?;
+
+        Ok(())
+    }
+
+    fn init_devices_table(&self) -> anyhow::Result<()> {
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS devices (
+                id ITEGER PRIMARY KEY,
+                product TEXT NOT NULL,
+                timestamp DATETIME NOT NULL,
+                battery REAL
+                )
+                ",
+                params![],
+            )
+            .context("Failed to create devices table")?;
 
         Ok(())
     }

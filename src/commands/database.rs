@@ -1,11 +1,12 @@
 use crate::config::Config;
 use crate::db::Database;
-use crate::models::{Activity, File};
+use crate::models::{Activity, Device, File};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use fitparser::Value;
 use fitparser::de::{DecodeOption, from_reader_with_options};
-use fitparser::profile::MesgNum;
+use fitparser::profile::{field_types, get_field_variant_as_string, MesgNum};
+use fitparser::profile::field_types::FieldDataType;
 use indicatif::ProgressBar;
 use rusqlite::params;
 use std::collections::HashSet;
@@ -106,6 +107,9 @@ impl DatabaseArgs {
         let mut sessions: Vec<Activity> = Vec::new();
         let mut curr_session = Activity::new();
 
+        let mut devices: Vec<Device> = Vec::new();
+        let mut curr_device = Device::new();
+
         for record in records {
             match record.kind() {
                 MesgNum::Session => {
@@ -140,6 +144,32 @@ impl DatabaseArgs {
                         }
                     }
                 }
+                MesgNum::DeviceInfo => {
+                    if !curr_device.is_empty() {
+                        devices.push(curr_device);
+                        curr_device = Device::new();
+                    }
+                    for field in record.fields() {
+                        // println!("{} ---- {}", field.name(), field);
+                        match field.name() {
+                            "garmin_product" => {
+                                // let field_type = FieldDataType::GarminProduct;
+                                // let product_name: String = get_field_variant_as_string(field_type, field.value().try_into()?);
+                                // println!("{}", product_name);
+                                curr_device.product = field.value().to_string();
+                                // curr_device.product = field.value().to_string()
+                            }
+                            "timestamp" => match field.clone().into_value() {
+                                Value::Timestamp(local_dt) => curr_device.timestamp = local_dt,
+                                _ => eprintln!("Unexpected timestamp type"),
+                            },
+                            "battery_voltage" => {
+                                curr_device.battery = Some(field.clone().into_value().try_into()?)
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -150,6 +180,20 @@ impl DatabaseArgs {
             db.connection().execute(
                 "INSERT INTO activities (sport, timestamp, duration, distance, calories) VALUES (?1, ?2, ?3, ?4, ?5)",
                 params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories],
+            )?;
+        }
+
+        if !curr_device.is_empty() {
+            devices.push(curr_device);
+        }
+        for device in devices {
+            db.connection().execute(
+                "INSERT INTO devices (product, timestamp, battery) VALUES (?1, ?2, ?3)",
+                params![
+                    device.product,
+                    device.timestamp.to_rfc3339(),
+                    device.battery
+                ],
             )?;
         }
         Ok(())

@@ -25,6 +25,10 @@ pub enum Commands {
     #[command(name = "summary")]
     #[command(about = "display summary over specified time period")]
     Summary(commands::SummaryArgs),
+
+    #[command(name = "devices")]
+    #[command(about = "get information on devices")]
+    Devices(commands::DevicesArgs),
 }
 
 impl Cli {
@@ -54,6 +58,7 @@ impl Cli {
             Commands::Info(cmd) => cmd.run(&config, &db),
             Commands::Database(cmd) => cmd.run(&config, &db),
             Commands::Summary(cmd) => cmd.run(&config, &db),
+            Commands::Devices(cmd) => cmd.run(&config,&db),
         }
     }
 }

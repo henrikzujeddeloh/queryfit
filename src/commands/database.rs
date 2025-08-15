@@ -5,8 +5,8 @@ use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use fitparser::Value;
 use fitparser::de::{DecodeOption, from_reader_with_options};
-use fitparser::profile::{field_types, get_field_variant_as_string, MesgNum};
 use fitparser::profile::field_types::FieldDataType;
+use fitparser::profile::{MesgNum, field_types, get_field_variant_as_string};
 use indicatif::ProgressBar;
 use rusqlite::params;
 use std::collections::HashSet;
@@ -152,12 +152,14 @@ impl DatabaseArgs {
                     for field in record.fields() {
                         // println!("{} ---- {}", field.name(), field);
                         match field.name() {
+                            // TODO: better handle these special device definitions
+                            "product" => match field.value().to_string().as_str() {
+                                "1052" => curr_device.product = "sram_power".to_string(),
+                                "1037" => curr_device.product = "sram_shifting".to_string(),
+                                _ => curr_device.product = field.value().to_string(),
+                            },
                             "garmin_product" => {
-                                // let field_type = FieldDataType::GarminProduct;
-                                // let product_name: String = get_field_variant_as_string(field_type, field.value().try_into()?);
-                                // println!("{}", product_name);
                                 curr_device.product = field.value().to_string();
-                                // curr_device.product = field.value().to_string()
                             }
                             "timestamp" => match field.clone().into_value() {
                                 Value::Timestamp(local_dt) => curr_device.timestamp = local_dt,

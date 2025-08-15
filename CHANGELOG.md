@@ -6,8 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [unreleased]
+
+## v0.4.0 - 2025-08-15
 ### Features
  - Add Garmin devices into database (product name, timestamp and battery voltage)
+ - List all devices with most recent entry timestamp and battery voltage (`queryfit devices list`)
 
 ## v0.3.0 - 2025-08-11
 ### Features

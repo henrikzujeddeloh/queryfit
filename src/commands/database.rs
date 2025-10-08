@@ -130,6 +130,9 @@ impl DatabaseArgs {
                                     if distance > 0.0 { Some(distance) } else { None };
                                 // curr_session.distance = Some(field.clone().into_value().try_into()?)
                             }
+                            "avg_heart_rate" => {
+                                curr_session.avg_hr = field.clone().into_value().try_into()?
+                            }
                             "start_time" => match field.clone().into_value() {
                                 Value::Timestamp(local_dt) => {
                                     // timestamps in .fit file are in local time
@@ -139,6 +142,30 @@ impl DatabaseArgs {
                             },
                             "total_calories" => {
                                 curr_session.calories = field.clone().into_value().try_into()?
+                            }
+                            "total_ascent" => {
+                                let total_ascent: f64 = field.clone().into_value().try_into()?;
+                                curr_session.elevation = if total_ascent > 0.0 {
+                                    Some(total_ascent)
+                                } else {
+                                    None
+                                };
+                            }
+                            "avg_power" => {
+                                let avg_power: f64 = field.clone().into_value().try_into()?;
+                                curr_session.avg_power = if avg_power > 0.0 {
+                                    Some(avg_power)
+                                } else {
+                                    None
+                                };
+                            }
+                            "workout_rpe" => {
+                                let workout_rpe: f64 = field.clone().into_value().try_into()?;
+                                curr_session.rpe = if workout_rpe > 0.0 {
+                                    Some(workout_rpe/10.0)
+                                } else {
+                                    None
+                                };
                             }
                             _ => {}
                         }
@@ -180,8 +207,8 @@ impl DatabaseArgs {
         }
         for session in sessions {
             db.connection().execute(
-                "INSERT INTO activities (sport, timestamp, duration, distance, calories) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories],
+                "INSERT INTO activities (sport, timestamp, duration, distance, calories, avg_hr, elevation, avg_power, rpe) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories, session.avg_hr, session.elevation, session.avg_power, session.rpe],
             )?;
         }
 

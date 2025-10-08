@@ -109,7 +109,11 @@ impl Database {
                 sport TEXT NOT NULL,
                 duration REAL,
                 distance REAL,
-                calories REAL
+                avg_hr REAL,
+                calories REAL,
+                elevation REAL,
+                avg_power REAL,
+                rpe REAL
                 )
                 ",
                 params![],

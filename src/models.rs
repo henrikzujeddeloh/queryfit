@@ -26,8 +26,20 @@ pub struct Activity {
     // in meters
     pub distance: Option<f64>,
 
+    // in bpm
+    pub avg_hr: f64,
+
     // in kcal
     pub calories: f64,
+
+    // in m
+    pub elevation: Option<f64>,
+
+    // in W
+    pub avg_power: Option<f64>,
+
+    // from 1-10
+    pub rpe: Option<f64>,
 }
 
 impl Activity {
@@ -37,7 +49,11 @@ impl Activity {
             timestamp: Local::now(),
             duration: 0.0,
             distance: None,
+            avg_hr: 0.0,
             calories: 0.0,
+            elevation: None,
+            avg_power: None,
+            rpe: None,
         }
     }
 

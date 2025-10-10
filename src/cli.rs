@@ -29,6 +29,10 @@ pub enum Commands {
     #[command(name = "devices")]
     #[command(about = "get information on devices")]
     Devices(commands::DevicesArgs),
+
+    #[command(name = "calculate")]
+    #[command(about = "calculate something from workout data")]
+    Calculate(commands::CalculateArgs),
 }
 
 impl Cli {
@@ -59,6 +63,7 @@ impl Cli {
             Commands::Database(cmd) => cmd.run(&config, &db),
             Commands::Summary(cmd) => cmd.run(&config, &db),
             Commands::Devices(cmd) => cmd.run(&config,&db),
+            Commands::Calculate(cmd) => cmd.run(&config,&db),
         }
     }
 }

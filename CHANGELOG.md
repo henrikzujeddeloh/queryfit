@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [unreleased]
+### Features
+ - Add average power, average heart rate, elevation and RPE data to database from .fit files
+ - Estimate RPE for activities without one logged
 
 ## v0.4.0 - 2025-08-15
 ### Features

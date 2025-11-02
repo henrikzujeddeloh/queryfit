@@ -113,7 +113,8 @@ impl Database {
                 calories REAL,
                 elevation REAL,
                 avg_power REAL,
-                rpe REAL
+                rpe REAL,
+                rpe_est BOOL
                 )
                 ",
                 params![],

@@ -40,6 +40,9 @@ pub struct Activity {
 
     // from 1-10
     pub rpe: Option<f64>,
+
+    // was RPE estimated?
+    pub rpe_est: bool,
 }
 
 impl Activity {
@@ -54,6 +57,7 @@ impl Activity {
             elevation: None,
             avg_power: None,
             rpe: None,
+            rpe_est: false,
         }
     }
 

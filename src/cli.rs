@@ -14,6 +14,10 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    #[command(name = "config")]
+    #[command(about = "read and write queryfit configuration")]
+    Config(commands::ConfigArgs),
+
     #[command(name = "info")]
     #[command(about = "information about .fit files and database")]
     Info(commands::InfoArgs),
@@ -37,6 +41,10 @@ pub enum Commands {
 
 impl Cli {
     pub fn run(self) -> anyhow::Result<()> {
+        if let Commands::Config(cmd) = &self.commands {
+            return cmd.run();
+        }
+
         let config = Config::load()?;
 
         let db = Database::new(&config)?;
@@ -46,6 +54,7 @@ impl Cli {
                 db.set_db_invalid();
                 // if database version is not correct, only allow database commands
                 match &self.commands {
+                    Commands::Config(cmd) => cmd.run()?,
                     Commands::Info(cmd) => cmd.run(&config, &db)?,
                     Commands::Database(cmd) => cmd.run(&config, &db)?,
                     _ => println!(
@@ -59,11 +68,12 @@ impl Cli {
         }
 
         match self.commands {
+            Commands::Config(cmd) => cmd.run(),
             Commands::Info(cmd) => cmd.run(&config, &db),
             Commands::Database(cmd) => cmd.run(&config, &db),
             Commands::Summary(cmd) => cmd.run(&config, &db),
-            Commands::Devices(cmd) => cmd.run(&config,&db),
-            Commands::Calculate(cmd) => cmd.run(&config,&db),
+            Commands::Devices(cmd) => cmd.run(&config, &db),
+            Commands::Calculate(cmd) => cmd.run(&config, &db),
         }
     }
 }

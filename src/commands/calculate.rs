@@ -76,8 +76,8 @@ impl CalculateArgs {
         let workouts = Self::fetch_workouts(db)?;
 
         for workout in workouts {
-            let estimated_rpe = Self::estimate_rpe(workout, &scaling_params, &model)?;
-            println!("Estimated RPE: {} (dist: {}, avg_hr: {})", estimated_rpe, &workout.distance, &workout.avg_hr);
+            let estimated_rpe = Self::estimate_rpe(&workout, &scaling_params, &model)?;
+            println!("Estimated RPE: {} (dist: {}, avg_hr: {}, avg_power: {})", estimated_rpe, &workout.distance/1000.0, &workout.avg_hr, &workout.avg_power);
         }
 
         let coefficients = model.params();
@@ -173,7 +173,7 @@ impl CalculateArgs {
     }
 
     fn estimate_rpe(
-        workout: Workout,
+        workout: &Workout,
         scaling_params: &Vec<(f64, f64)>,
         model: &FittedLinearRegression<f64>,
     ) -> anyhow::Result<ArrayBase<OwnedRepr<f64>, Dim<[usize; 1]>>> {

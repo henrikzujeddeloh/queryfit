@@ -23,7 +23,7 @@ impl Config {
     }
 
     // get full path to config.toml file
-    fn get_config_file_path() -> PathBuf {
+    pub fn get_config_file_path() -> PathBuf {
         Self::get_config_dir().join("config.toml")
     }
 
@@ -41,7 +41,7 @@ impl Config {
         let config_path = Self::get_config_file_path();
 
         if !config_path.exists() {
-            Self::create_default_config();
+            Self::create_default_config()?;
             std::process::exit(0);
         }
 
@@ -52,6 +52,36 @@ impl Config {
             toml::from_str(&file_contents).context("Failed to parse config.toml")?;
 
         Ok(config)
+    }
+
+    pub fn load_or_create() -> anyhow::Result<Self> {
+        Self::ensure_config_dir()?;
+
+        let config_path = Self::get_config_file_path();
+
+        if !config_path.exists() {
+            return Self::create_default_config();
+        }
+
+        let file_contents =
+            fs::read_to_string(&config_path).context("Failed to read config file")?;
+
+        let config: Config =
+            toml::from_str(&file_contents).context("Failed to parse config.toml")?;
+
+        Ok(config)
+    }
+
+    pub fn save(&self) -> anyhow::Result<()> {
+        Self::ensure_config_dir()?;
+
+        let config_path = Self::get_config_file_path();
+        let config_toml_string =
+            toml::to_string_pretty(self).context("Failed to serialize config to toml")?;
+
+        fs::write(&config_path, config_toml_string).context("Failed to write config")?;
+
+        Ok(())
     }
 
     fn create_default_config() -> anyhow::Result<Self> {
@@ -76,5 +106,9 @@ impl Config {
 
     pub fn get_data_path(&self) -> &PathBuf {
         &self.data
+    }
+
+    pub fn set_data_path(&mut self, data: PathBuf) {
+        self.data = data;
     }
 }

@@ -7,7 +7,7 @@ mod models;
 use clap::Parser;
 use cli::Cli;
 
-pub static VERSION: &str = "v0.4.0";
+pub static VERSION: &str = "v0.5.0";
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();

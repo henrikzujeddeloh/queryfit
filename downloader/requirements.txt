@@ -1,2 +1,2 @@
-garth
-tqdm
+garth>=0.5,<0.6
+tqdm>=4.67,<5

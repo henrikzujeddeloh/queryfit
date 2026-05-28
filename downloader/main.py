@@ -1,7 +1,9 @@
-import os
-import time
-import datetime
 import configparser
+import datetime
+import os
+import sys
+import time
+
 import garth
 from tqdm import tqdm
 
@@ -20,16 +22,21 @@ config.read(config_path)
 garmin_connect_activity_search_url = "/activitylist-service/activities/search/activities"
 garmin_connect_download_service_url = "/download-service/files"
 
-# Read credentials and file folder from config
-email = config['Garmin']['email']
-password = config['Garmin']['password']
-fit_file_folder = config['Garmin']['fit_file_folder']
+try:
+    # Read credentials and file folder from config
+    email = config['Garmin']['email'].strip()
+    password = config['Garmin']['password'].strip()
+    fit_file_folder = config['Garmin']['fit_file_folder'].strip()
+except KeyError as exc:
+    sys.exit(f"Missing Garmin downloader config value: {exc}")
+
+os.makedirs(fit_file_folder, exist_ok=True)
 
 # Garth authentication
 try:
     garth.resume(garth_path)
     garth.client.username
-except:
+except Exception:
     garth.login(email, password)
     garth.save(garth_path)
 
@@ -56,6 +63,8 @@ for day in tqdm(range(total_days), desc="Downloading FIT files"):
     date_str = current_date.strftime("%Y-%m-%d")
 
     params = {
+        'start': 0,
+        'limit': 100,
         'startDate': date_str,
         "endDate": date_str
     }
@@ -67,13 +76,15 @@ for day in tqdm(range(total_days), desc="Downloading FIT files"):
         time.sleep(1)
         # get .fit file for each activity in one day
         activity_id = str(activity['activityId'])
-        
-        response = garth.client.get('connectapi', f'{garmin_connect_download_service_url}/activity/{activity_id}', api=True)
+
         filename = f'{fit_file_folder}/{activity_id}.zip'
-        
+        if os.path.exists(filename):
+            continue
+
+        content = garth.download(f'{garmin_connect_download_service_url}/activity/{activity_id}')
+
         with open(filename, 'wb') as file:
-            for chunk in response:
-                file.write(chunk)
+            file.write(content)
 
 # update last download day to today in "last.txt"
 current_date = datetime.date.today().strftime('%Y-%m-%d')

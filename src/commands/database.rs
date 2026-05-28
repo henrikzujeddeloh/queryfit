@@ -4,14 +4,14 @@ use crate::models::{Activity, Device, File};
 use anyhow::anyhow;
 use clap::{Args, Subcommand};
 use fitparser::Value;
-use fitparser::de::{DecodeOption, from_reader_with_options};
-use fitparser::profile::field_types::FieldDataType;
-use fitparser::profile::{MesgNum, field_types, get_field_variant_as_string};
+use fitparser::de::{DecodeOption, FitObject, FitStreamProcessor};
+use fitparser::profile::MesgNum;
 use indicatif::ProgressBar;
-use rusqlite::params;
+use rusqlite::{Connection, params};
 use std::collections::HashSet;
 use std::path::Path;
 use std::process;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Args)]
 pub struct DatabaseArgs {
@@ -63,23 +63,43 @@ impl DatabaseArgs {
         let pb = ProgressBar::new(files.len() as u64);
 
         println!("Adding .fit file data to database...");
+        let tx = db.connection().unchecked_transaction()?;
+        let profile_import = std::env::var_os("QUERYFIT_PROFILE_IMPORT").is_some();
+        let import_started = Instant::now();
+        let mut total_parse_time = Duration::ZERO;
+        let mut total_insert_time = Duration::ZERO;
         // TODO: process multiple files in parallel?
         for item in files {
             let fit_file_path = item.path();
             let file = File::new(Self::get_filename(&fit_file_path)?);
 
             // move to next file if it exists in database
-            if Self::check_file_imported(&file, db)? {
+            if Self::check_file_imported(&file, &tx)? {
                 pb.inc(1);
                 continue;
             }
 
-            Self::add_activity(&fit_file_path, db)?;
-            Self::add_filename(&file, db)?;
+            let parse_started = Instant::now();
+            let activity_data = Self::read_activity(&fit_file_path)?;
+            total_parse_time += parse_started.elapsed();
+
+            let insert_started = Instant::now();
+            Self::add_activity(activity_data, &tx)?;
+            Self::add_filename(&file, &tx)?;
+            total_insert_time += insert_started.elapsed();
 
             pb.inc(1);
         }
+        tx.commit()?;
         pb.finish_and_clear();
+        if profile_import {
+            println!(
+                "import timing: total={:.2?}, fit_decode={:.2?}, db_insert={:.2?}",
+                import_started.elapsed(),
+                total_parse_time,
+                total_insert_time
+            );
+        }
         println!("done.");
 
         Ok(())
@@ -93,16 +113,19 @@ impl DatabaseArgs {
         Ok(())
     }
 
-    fn add_activity(path: &Path, db: &Database) -> anyhow::Result<()> {
-        let mut file = std::fs::File::open(path)?;
-
+    fn read_activity(path: &Path) -> anyhow::Result<(Vec<Activity>, Vec<Device>)> {
         let opts: HashSet<DecodeOption> = HashSet::from([
             DecodeOption::SkipHeaderCrcValidation,
             DecodeOption::SkipDataCrcValidation,
             DecodeOption::DropUnknownFields,
             DecodeOption::DropUnknownMessages,
         ]);
-        let records = from_reader_with_options(&mut file, &opts)?;
+
+        let buffer = std::fs::read(path)?;
+        let mut input = buffer.as_slice();
+        let mut processor = FitStreamProcessor::new();
+
+        opts.iter().for_each(|option| processor.add_option(*option));
 
         let mut sessions: Vec<Activity> = Vec::new();
         let mut curr_session = Activity::new();
@@ -110,7 +133,25 @@ impl DatabaseArgs {
         let mut devices: Vec<Device> = Vec::new();
         let mut curr_device = Device::new();
 
-        for record in records {
+        while !input.is_empty() {
+            let (remaining, object) = processor.deserialize_next(input)?;
+            let record = match object {
+                FitObject::Crc(..) => {
+                    processor.reset();
+                    input = remaining;
+                    continue;
+                }
+                FitObject::DataMessage(message)
+                    if Self::should_decode_message(message.global_message_number()) =>
+                {
+                    processor.decode_message(message)?
+                }
+                _ => {
+                    input = remaining;
+                    continue;
+                }
+            };
+
             match record.kind() {
                 MesgNum::Session => {
                     if !curr_session.is_empty() {
@@ -195,37 +236,66 @@ impl DatabaseArgs {
                             "battery_voltage" => {
                                 curr_device.battery = Some(field.clone().into_value().try_into()?)
                             }
+                            "battery_status" => {
+                                curr_device.battery_status = Some(field.value().to_string())
+                            }
+                            "descriptor" | "product_name" => {
+                                let name = field.value().to_string();
+                                if !name.is_empty() {
+                                    curr_device.product = name;
+                                }
+                            }
                             _ => {}
                         }
                     }
                 }
                 _ => {}
             }
+
+            input = remaining;
         }
         if !curr_session.is_empty() {
             sessions.push(curr_session);
         }
+        if !curr_device.is_empty() {
+            devices.push(curr_device);
+        }
+
+        Ok((sessions, devices))
+    }
+
+    fn add_activity(
+        activity_data: (Vec<Activity>, Vec<Device>),
+        conn: &Connection,
+    ) -> anyhow::Result<()> {
+        let (sessions, devices) = activity_data;
+
         for session in sessions {
-            db.connection().execute(
+            conn.execute(
                 "INSERT INTO activities (sport, timestamp, duration, distance, calories, avg_hr, elevation, avg_power, rpe, rpe_est) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![session.sport, session.timestamp.to_rfc3339(), session.duration, session.distance, session.calories, session.avg_hr, session.elevation, session.avg_power, session.rpe, session.rpe_est],
             )?;
         }
 
-        if !curr_device.is_empty() {
-            devices.push(curr_device);
-        }
         for device in devices {
-            db.connection().execute(
-                "INSERT INTO devices (product, timestamp, battery) VALUES (?1, ?2, ?3)",
+            conn.execute(
+                "INSERT INTO devices (product, timestamp, battery, battery_status) VALUES (?1, ?2, ?3, ?4)",
                 params![
                     device.product,
                     device.timestamp.to_rfc3339(),
-                    device.battery
+                    device.battery,
+                    device.battery_status,
                 ],
             )?;
         }
         Ok(())
+    }
+
+    fn should_decode_message(global_message_number: u16) -> bool {
+        matches!(
+            MesgNum::from(global_message_number),
+            MesgNum::Session | MesgNum::DeviceInfo | MesgNum::FieldDescription
+        )
     }
 
     fn get_filename(path: &Path) -> anyhow::Result<String> {
@@ -236,8 +306,8 @@ impl DatabaseArgs {
         Ok(filename.to_owned())
     }
 
-    fn check_file_imported(file: &File, db: &Database) -> anyhow::Result<bool> {
-        let exists: bool = db.connection().query_row(
+    fn check_file_imported(file: &File, conn: &Connection) -> anyhow::Result<bool> {
+        let exists: bool = conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM files WHERE filename = ?1)",
             params![file.filename],
             |row| row.get(0),
@@ -246,8 +316,8 @@ impl DatabaseArgs {
         Ok(exists)
     }
 
-    fn add_filename(file: &File, db: &Database) -> anyhow::Result<()> {
-        db.connection().execute(
+    fn add_filename(file: &File, conn: &Connection) -> anyhow::Result<()> {
+        conn.execute(
             "INSERT INTO files (filename) VALUES (?1)",
             params![file.filename],
         )?;

@@ -131,7 +131,8 @@ impl Database {
                 id ITEGER PRIMARY KEY,
                 product TEXT NOT NULL,
                 timestamp DATETIME NOT NULL,
-                battery REAL
+                battery REAL,
+                battery_status TEXT
                 )
                 ",
                 params![],

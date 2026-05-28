@@ -47,6 +47,16 @@ Rough UI/UX and small performance issues are expected. Improve them incrementall
 
 Do not add broad compatibility layers, public API guarantees, or complex abstractions unless there is a concrete need.
 
+## Changelog
+
+Keep `CHANGELOG.md` up to date for user-visible changes. Add entries under `## [unreleased]` while developing unless the user explicitly asks to prepare a release.
+
+Use clear categories such as `### Features`, `### Changed`, `### Fixed`, and `### Documentation`. Mention new commands, changed behavior, database/schema changes, downloader changes, and important developer/agent guidance updates.
+
+When preparing a release, move relevant unreleased entries into a dated version section, update version references consistently, and include the version bump itself in the changelog.
+
+Do not add changelog entries for purely internal refactors unless they affect behavior, maintenance expectations, or future agents.
+
 ## Verification
 
 Use judgment for testing until a fuller test suite exists.

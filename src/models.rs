@@ -75,6 +75,7 @@ pub struct Device {
     // in V
     pub battery: Option<f64>,
 
+    pub battery_status: Option<String>,
 }
 
 impl Device {
@@ -83,6 +84,7 @@ impl Device {
             product: "Unknown".to_owned(),
             timestamp: Local::now(),
             battery: None,
+            battery_status: None,
         }
     }
 
